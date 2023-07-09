@@ -7,6 +7,8 @@ contract Raffle {
 
     uint256 private immutable i_entranceFee;
 
+    address[] private s_participants;
+
     constructor(uint256 entranceFee) {
         i_entranceFee = entranceFee;
     }
@@ -15,7 +17,20 @@ contract Raffle {
         if (msg.value < i_entranceFee) {
             revert Raffle__NotEnoughEthToEnter();
         }
+        s_participants.push(msg.sender);
     }
 
     function pickWinner() public {} // only owner? only chainlink?
+
+    function getEntranceFee() public view returns (uint256) {
+        return i_entranceFee;
+    }
+
+    function getParticipant(uint256 index) public view returns (address) {
+        return s_participants[index];
+    }
+
+    function getNumberOfParticipants() public view returns (uint256) {
+        return s_participants.length;
+    }
 }
