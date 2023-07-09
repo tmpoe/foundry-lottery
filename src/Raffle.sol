@@ -7,7 +7,7 @@ contract Raffle {
 
     uint256 private immutable i_entranceFee;
 
-    address[] private s_participants;
+    address payable[] private s_participants;
 
     constructor(uint256 entranceFee) {
         i_entranceFee = entranceFee;
@@ -17,7 +17,7 @@ contract Raffle {
         if (msg.value < i_entranceFee) {
             revert Raffle__NotEnoughEthToEnter();
         }
-        s_participants.push(msg.sender);
+        s_participants.push(payable(msg.sender));
     }
 
     function pickWinner() public {} // only owner? only chainlink?
