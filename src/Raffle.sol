@@ -7,8 +7,14 @@ import {VRFConsumerBaseV2} from "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2
 
 contract Raffle is VRFConsumerBaseV2 {
     error Raffle__NotEnoughEthToEnter();
+    error Raffle__RaffleIsNotOpen();
     error Raffle__NotEnoughTimePassed();
     error Raffle__WinnerTransferFailed();
+
+    enum RaffleState {
+        OPEN,
+        CLOSED
+    }
 
     uint32 private constant NUM_RANDOM_WORDS = 1;
     uint16 private constant REQUEST_CONFIRMATIONS = 3;
@@ -23,6 +29,7 @@ contract Raffle is VRFConsumerBaseV2 {
     address payable[] private s_participants;
     uint256 private s_currentRaffleNumber = 0;
     uint256 private s_startOfRaffle = block.timestamp;
+    RaffleState private s_raffleState = RaffleState.OPEN;
 
     event Entered(address indexed participant, uint256 raffleNumber);
     event Winner(address indexed winner, uint256 raffleNumber);
@@ -47,6 +54,11 @@ contract Raffle is VRFConsumerBaseV2 {
         if (msg.value < i_entranceFee) {
             revert Raffle__NotEnoughEthToEnter();
         }
+
+        if (s_raffleState != RaffleState.OPEN) {
+            revert Raffle__RaffleIsNotOpen();
+        }
+
         s_participants.push(payable(msg.sender));
         emit Entered(msg.sender, s_currentRaffleNumber);
     }
@@ -55,6 +67,7 @@ contract Raffle is VRFConsumerBaseV2 {
         if (block.timestamp - s_startOfRaffle < i_lengthOfRaffle) {
             revert Raffle__NotEnoughTimePassed();
         }
+        s_raffleState = RaffleState.CLOSED;
         uint256 requestId = i_vrfCoordinator.requestRandomWords(
             i_gasLane,
             i_subscriptionId,
@@ -73,6 +86,7 @@ contract Raffle is VRFConsumerBaseV2 {
         emit Winner(winner, s_currentRaffleNumber++);
         delete s_participants;
         s_startOfRaffle = block.timestamp;
+        s_raffleState = RaffleState.OPEN;
 
         // call will not run out of gas, transfer could and I would not want to have the funds get stuck
         (bool success, ) = payable(winner).call{value: address(this).balance}(
