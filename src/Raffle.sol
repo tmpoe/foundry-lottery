@@ -7,6 +7,7 @@ import {VRFConsumerBaseV2} from "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2
 
 contract Raffle is VRFConsumerBaseV2 {
     error Raffle__NotEnoughEthToEnter();
+    error Raffle__NotEnoughTimePassed();
     error Raffle__WinnerTransferFailed();
 
     uint32 private constant NUM_RANDOM_WORDS = 1;
@@ -17,24 +18,29 @@ contract Raffle is VRFConsumerBaseV2 {
     uint64 private immutable i_subscriptionId;
     uint32 private immutable i_callbackGasLimit;
     bytes32 private immutable i_gasLane;
+    uint256 private immutable i_lengthOfRaffle;
 
     address payable[] private s_participants;
+    uint256 private s_currentRaffleNumber = 0;
+    uint256 private s_startOfRaffle = block.timestamp;
 
-    event Entered(address indexed participant);
-    event Winner(address indexed winner);
+    event Entered(address indexed participant, uint256 raffleNumber);
+    event Winner(address indexed winner, uint256 raffleNumber);
 
     constructor(
         uint256 entranceFee,
         address vrfCoordinator,
         uint64 subscriptionId,
         uint32 callbackGasLimit,
-        bytes32 gasLane
+        bytes32 gasLane,
+        uint256 lengthOfRaffle
     ) VRFConsumerBaseV2(vrfCoordinator) {
         i_entranceFee = entranceFee;
         i_vrfCoordinator = VRFCoordinatorV2Interface(vrfCoordinator);
         i_subscriptionId = subscriptionId;
         i_callbackGasLimit = callbackGasLimit;
         i_gasLane = gasLane;
+        i_lengthOfRaffle = lengthOfRaffle;
     }
 
     function enter() external payable {
@@ -42,10 +48,13 @@ contract Raffle is VRFConsumerBaseV2 {
             revert Raffle__NotEnoughEthToEnter();
         }
         s_participants.push(payable(msg.sender));
-        emit Entered(msg.sender);
+        emit Entered(msg.sender, s_currentRaffleNumber);
     }
 
     function pickWinner() public {
+        if (block.timestamp - s_startOfRaffle < i_lengthOfRaffle) {
+            revert Raffle__NotEnoughTimePassed();
+        }
         uint256 requestId = i_vrfCoordinator.requestRandomWords(
             i_gasLane,
             i_subscriptionId,
@@ -61,7 +70,10 @@ contract Raffle is VRFConsumerBaseV2 {
     {
         uint256 indexOfWinner = randomWords[0] % s_participants.length;
         address payable winner = s_participants[indexOfWinner];
-        emit Winner(winner);
+        emit Winner(winner, s_currentRaffleNumber++);
+        delete s_participants;
+        s_startOfRaffle = block.timestamp;
+
         // call will not run out of gas, transfer could and I would not want to have the funds get stuck
         (bool success, ) = payable(winner).call{value: address(this).balance}(
             ""
