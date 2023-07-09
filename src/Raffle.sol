@@ -9,6 +9,8 @@ contract Raffle {
 
     address payable[] private s_participants;
 
+    event Entered(address indexed participant);
+
     constructor(uint256 entranceFee) {
         i_entranceFee = entranceFee;
     }
@@ -18,6 +20,7 @@ contract Raffle {
             revert Raffle__NotEnoughEthToEnter();
         }
         s_participants.push(payable(msg.sender));
+        emit Entered(msg.sender);
     }
 
     function pickWinner() public {} // only owner? only chainlink?
