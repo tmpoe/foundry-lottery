@@ -37,6 +37,7 @@ contract Raffle is VRFConsumerBaseV2 {
 
     event Entered(address indexed participant, uint256 raffleNumber);
     event Winner(address indexed winner, uint256 raffleNumber);
+    event IdleRaffleReset(uint256 raffleNumber);
 
     constructor(
         uint256 entranceFee,
@@ -80,9 +81,7 @@ contract Raffle is VRFConsumerBaseV2 {
         bool timeHasPassed = (block.timestamp - s_startOfRaffle >=
             i_lengthOfRaffle);
         bool isOpen = s_raffleState == RaffleState.OPEN;
-        bool hasBalance = address(this).balance > 0;
-        bool hasParticipants = s_participants.length > 0;
-        upkeepNeeded = timeHasPassed && isOpen && hasBalance && hasParticipants;
+        upkeepNeeded = timeHasPassed && isOpen;
         return (upkeepNeeded, "0x0");
     }
 
@@ -97,6 +96,16 @@ contract Raffle is VRFConsumerBaseV2 {
                 s_raffleState
             );
         }
+
+        bool hasBalance = address(this).balance > 0;
+        bool hasParticipants = s_participants.length > 0;
+
+        if (!hasBalance || !hasParticipants) {
+            s_startOfRaffle = block.timestamp;
+            emit IdleRaffleReset(s_currentRaffleNumber);
+            return;
+        }
+
         s_raffleState = RaffleState.CLOSED;
         uint256 requestId = i_vrfCoordinator.requestRandomWords(
             i_gasLane,
