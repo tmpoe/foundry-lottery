@@ -8,7 +8,11 @@ import {VRFConsumerBaseV2} from "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2
 contract Raffle is VRFConsumerBaseV2 {
     error Raffle__NotEnoughEthToEnter();
     error Raffle__RaffleIsNotOpen();
-    error Raffle__NotEnoughTimePassed();
+    error Raffle__upKeepNotNeeded(
+        uint256 balance,
+        uint256 numPlayers,
+        RaffleState state
+    );
     error Raffle__WinnerTransferFailed();
 
     enum RaffleState {
@@ -63,9 +67,35 @@ contract Raffle is VRFConsumerBaseV2 {
         emit Entered(msg.sender, s_currentRaffleNumber);
     }
 
-    function pickWinner() public {
-        if (block.timestamp - s_startOfRaffle < i_lengthOfRaffle) {
-            revert Raffle__NotEnoughTimePassed();
+    function checkUpkeep(
+        bytes memory /* performData */
+    )
+        public
+        view
+        returns (
+            bool upkeepNeeded,
+            bytes memory /* performData */
+        )
+    {
+        bool timeHasPassed = (block.timestamp - s_startOfRaffle >=
+            i_lengthOfRaffle);
+        bool isOpen = s_raffleState == RaffleState.OPEN;
+        bool hasBalance = address(this).balance > 0;
+        bool hasParticipants = s_participants.length > 0;
+        upkeepNeeded = timeHasPassed && isOpen && hasBalance && hasParticipants;
+        return (upkeepNeeded, "0x0");
+    }
+
+    function performUpkeep(
+        bytes memory /* performData */
+    ) public {
+        (bool upKeepNeeded, ) = checkUpkeep("");
+        if (!upKeepNeeded) {
+            revert Raffle__upKeepNotNeeded(
+                address(this).balance,
+                s_participants.length,
+                s_raffleState
+            );
         }
         s_raffleState = RaffleState.CLOSED;
         uint256 requestId = i_vrfCoordinator.requestRandomWords(
