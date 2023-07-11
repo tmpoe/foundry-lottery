@@ -5,6 +5,8 @@ pragma solidity 0.8.20;
 import {Script} from "forge-std/Script.sol";
 import {Raffle} from "../src/Raffle.sol";
 import {Config} from "./Config.s.sol";
+import {CreateVrfSubscription} from "./CreateVrfSubscription.s.sol";
+import {VRFCoordinatorV2Mock} from "@chainlink/contracts/src/v0.8/mocks/VRFCoordinatorV2Mock.sol";
 
 contract DeployRaffle is Script {
     function run() external returns (Raffle, Config) {
@@ -17,6 +19,13 @@ contract DeployRaffle is Script {
             bytes32 gasLane,
             uint256 lengthOfRaffle
         ) = config.activeNetworkConfig();
+
+        if (subscriptionId == 0) {
+            CreateVrfSubscription createVrfSubscription = new CreateVrfSubscription();
+            subscriptionId = createVrfSubscription.createSubscription(
+                vrfCoordinatorAddress
+            );
+        }
         vm.startBroadcast();
         Raffle raffle = new Raffle(
             entraceFee,
@@ -26,6 +35,10 @@ contract DeployRaffle is Script {
             gasLane,
             lengthOfRaffle
         );
+        VRFCoordinatorV2Mock vrfCoordinatorV2Mock = VRFCoordinatorV2Mock(
+            vrfCoordinatorAddress
+        );
+        vrfCoordinatorV2Mock.addConsumer(subscriptionId, address(raffle));
         vm.stopBroadcast();
         return (raffle, config);
     }

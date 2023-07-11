@@ -44,6 +44,7 @@ contract Config is Script {
         uint96 baseFee = 0.25 ether; // LINK
         uint96 gasPriceLink = 1e9; // 1 qwei of LINK
         vm.startBroadcast();
+
         VRFCoordinatorV2Mock vrfCoordinator = new VRFCoordinatorV2Mock(
             baseFee,
             gasPriceLink
