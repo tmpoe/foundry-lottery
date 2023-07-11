@@ -7,7 +7,7 @@ import {Raffle} from "../src/Raffle.sol";
 import {Config} from "./Config.s.sol";
 
 contract DeployRaffle is Script {
-    function run() external returns (Raffle) {
+    function run() external returns (Raffle, Config) {
         Config config = new Config();
         (
             uint256 entraceFee,
@@ -27,6 +27,6 @@ contract DeployRaffle is Script {
             lengthOfRaffle
         );
         vm.stopBroadcast();
-        return raffle;
+        return (raffle, config);
     }
 }

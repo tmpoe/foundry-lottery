@@ -11,7 +11,7 @@ contract Raffle is VRFConsumerBaseV2 {
     error Raffle__upKeepNotNeeded(
         uint256 balance,
         uint256 numPlayers,
-        RaffleState state
+        uint256 state
     );
     error Raffle__WinnerTransferFailed();
 
@@ -70,14 +70,7 @@ contract Raffle is VRFConsumerBaseV2 {
 
     function checkUpkeep(
         bytes memory /* performData */
-    )
-        public
-        view
-        returns (
-            bool upkeepNeeded,
-            bytes memory /* performData */
-        )
-    {
+    ) public view returns (bool upkeepNeeded, bytes memory /* performData */) {
         bool timeHasPassed = (block.timestamp - s_startOfRaffle >=
             i_lengthOfRaffle);
         bool isOpen = s_raffleState == RaffleState.OPEN;
@@ -85,15 +78,13 @@ contract Raffle is VRFConsumerBaseV2 {
         return (upkeepNeeded, "0x0");
     }
 
-    function performUpkeep(
-        bytes memory /* performData */
-    ) public {
+    function performUpkeep(bytes memory /* performData */) public {
         (bool upKeepNeeded, ) = checkUpkeep("");
         if (!upKeepNeeded) {
             revert Raffle__upKeepNotNeeded(
                 address(this).balance,
                 s_participants.length,
-                s_raffleState
+                uint256(s_raffleState)
             );
         }
 
@@ -116,10 +107,10 @@ contract Raffle is VRFConsumerBaseV2 {
         );
     } // only owner? only chainlink?
 
-    function fulfillRandomWords(uint256 requestId, uint256[] memory randomWords)
-        internal
-        override
-    {
+    function fulfillRandomWords(
+        uint256 requestId,
+        uint256[] memory randomWords
+    ) internal override {
         uint256 indexOfWinner = randomWords[0] % s_participants.length;
         address payable winner = s_participants[indexOfWinner];
         emit Winner(winner, s_currentRaffleNumber++);
@@ -146,5 +137,9 @@ contract Raffle is VRFConsumerBaseV2 {
 
     function getNumberOfParticipants() public view returns (uint256) {
         return s_participants.length;
+    }
+
+    function getState() public view returns (uint256) {
+        return uint256(s_raffleState);
     }
 }
