@@ -25,16 +25,18 @@ contract DeployRaffle is Script {
         if (subscriptionId == 0) {
             CreateVrfSubscription createVrfSubscription = new CreateVrfSubscription();
             subscriptionId = createVrfSubscription.createSubscription(
-                vrfCoordinatorAddress
+                vrfCoordinatorAddress,
+                deployerKey
             );
             FundSubscription fundSubscription = new FundSubscription();
             fundSubscription.fundSubscription(
                 vrfCoordinatorAddress,
                 subscriptionId,
-                linkTokenAddress
+                linkTokenAddress,
+                deployerKey
             );
         }
-        vm.startBroadcast();
+        vm.startBroadcast(deployerKey);
         Raffle raffle = new Raffle(
             entraceFee,
             vrfCoordinatorAddress,
@@ -43,6 +45,7 @@ contract DeployRaffle is Script {
             gasLane,
             lengthOfRaffle
         );
+        vm.stopBroadcast();
         AddConsumer addConsumer = new AddConsumer();
         addConsumer.addConsumer(
             vrfCoordinatorAddress,
@@ -50,7 +53,6 @@ contract DeployRaffle is Script {
             address(raffle),
             deployerKey
         );
-        vm.stopBroadcast();
         return (raffle, config);
     }
 }

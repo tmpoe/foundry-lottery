@@ -16,19 +16,28 @@ contract CreateVrfSubscription is Script {
 
     function createSubscriptionByConfig() public returns (uint64) {
         Config config = new Config();
-        (, address vrfCoordinatorAddress, , , , , , ) = config
-            .activeNetworkConfig();
-        return createSubscription(vrfCoordinatorAddress);
+        (
+            ,
+            address vrfCoordinatorAddress,
+            ,
+            ,
+            ,
+            ,
+            ,
+            uint256 deployerKey
+        ) = config.activeNetworkConfig();
+        return createSubscription(vrfCoordinatorAddress, deployerKey);
     }
 
     function createSubscription(
-        address vrfCoordinatorAddress
+        address vrfCoordinatorAddress,
+        uint256 deployerKey
     ) public returns (uint64) {
         VRFCoordinatorV2Mock vrfCoordinator = VRFCoordinatorV2Mock(
             vrfCoordinatorAddress
         );
-
-        vm.startBroadcast();
+        console.log("Creating sub from ", deployerKey);
+        vm.startBroadcast(deployerKey);
         uint64 subId = vrfCoordinator.createSubscription();
         vm.stopBroadcast();
         return subId;
@@ -48,18 +57,26 @@ contract FundSubscription is Script {
             ,
             ,
             address linkTokenAddress,
-
+            uint256 deployerKey
         ) = config.activeNetworkConfig();
-        fundSubscription(vrfCoordinatorAddress, subId, linkTokenAddress);
+        fundSubscription(
+            vrfCoordinatorAddress,
+            subId,
+            linkTokenAddress,
+            deployerKey
+        );
     }
 
     function fundSubscription(
         address vrfCoordinatorAddress,
         uint64 subId,
-        address linkTokenAddress
+        address linkTokenAddress,
+        uint256 deployerKey
     ) public {
+        console.log("Funding sub from ", deployerKey);
+
         if (block.chainid == 31337) {
-            vm.startBroadcast();
+            vm.startBroadcast(deployerKey);
             VRFCoordinatorV2Mock(vrfCoordinatorAddress).fundSubscription(
                 subId,
                 FUND_AMOUNT
@@ -107,6 +124,7 @@ contract AddConsumer is Script {
         address raffleAddress,
         uint256 deployerKey
     ) public {
+        console.log("Adding consumer from ", deployerKey);
         vm.startBroadcast(deployerKey);
         VRFCoordinatorV2Mock(vrfCoordinatorAddress).addConsumer(
             subId,
