@@ -5,7 +5,7 @@ pragma solidity 0.8.20;
 import {Script} from "forge-std/Script.sol";
 import {Raffle} from "../src/Raffle.sol";
 import {Config} from "./Config.s.sol";
-import {CreateVrfSubscription, FundSubscription} from "./LinkInteractions.s.sol";
+import {CreateVrfSubscription, FundSubscription, AddConsumer} from "./LinkInteractions.s.sol";
 import {VRFCoordinatorV2Mock} from "@chainlink/contracts/src/v0.8/mocks/VRFCoordinatorV2Mock.sol";
 
 contract DeployRaffle is Script {
@@ -18,7 +18,8 @@ contract DeployRaffle is Script {
             uint32 callbackGasLimit,
             bytes32 gasLane,
             uint256 lengthOfRaffle,
-            address linkTokenAddress
+            address linkTokenAddress,
+            uint256 deployerKey
         ) = config.activeNetworkConfig();
 
         if (subscriptionId == 0) {
@@ -42,10 +43,13 @@ contract DeployRaffle is Script {
             gasLane,
             lengthOfRaffle
         );
-        VRFCoordinatorV2Mock vrfCoordinatorV2Mock = VRFCoordinatorV2Mock(
-            vrfCoordinatorAddress
+        AddConsumer addConsumer = new AddConsumer();
+        addConsumer.addConsumer(
+            vrfCoordinatorAddress,
+            subscriptionId,
+            address(raffle),
+            deployerKey
         );
-        vrfCoordinatorV2Mock.addConsumer(subscriptionId, address(raffle));
         vm.stopBroadcast();
         return (raffle, config);
     }

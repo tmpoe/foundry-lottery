@@ -7,6 +7,7 @@ import {Config} from "./Config.s.sol";
 import {console} from "forge-std/console.sol";
 import {VRFCoordinatorV2Mock} from "@chainlink/contracts/src/v0.8/mocks/VRFCoordinatorV2Mock.sol";
 import {LinkToken} from "../test/mocks/LinkToken.m.sol";
+import {DevOpsTools} from "foundry-devops/src/DevOpsTools.sol";
 
 contract CreateVrfSubscription is Script {
     function run() external returns (uint64) {
@@ -15,7 +16,7 @@ contract CreateVrfSubscription is Script {
 
     function createSubscriptionByConfig() public returns (uint64) {
         Config config = new Config();
-        (, address vrfCoordinatorAddress, , , , , ) = config
+        (, address vrfCoordinatorAddress, , , , , , ) = config
             .activeNetworkConfig();
         return createSubscription(vrfCoordinatorAddress);
     }
@@ -46,7 +47,8 @@ contract FundSubscription is Script {
             ,
             ,
             ,
-            address linkTokenAddress
+            address linkTokenAddress,
+
         ) = config.activeNetworkConfig();
         fundSubscription(vrfCoordinatorAddress, subId, linkTokenAddress);
     }
@@ -57,20 +59,63 @@ contract FundSubscription is Script {
         address linkTokenAddress
     ) public {
         if (block.chainid == 31337) {
+            vm.startBroadcast();
             VRFCoordinatorV2Mock(vrfCoordinatorAddress).fundSubscription(
                 subId,
                 FUND_AMOUNT
             );
+            vm.stopBroadcast();
         } else {
+            vm.startBroadcast();
             LinkToken(linkTokenAddress).transferAndCall(
                 vrfCoordinatorAddress,
                 FUND_AMOUNT,
                 abi.encode(subId)
             );
+            vm.stopBroadcast();
         }
     }
 
     function run() external {
         fundSubscriptionByConfig();
+    }
+}
+
+contract AddConsumer is Script {
+    function addConsumerByConfig() public {
+        Config config = new Config();
+        (
+            ,
+            address vrfCoordinatorAddress,
+            uint64 subId,
+            ,
+            ,
+            ,
+            ,
+            uint256 deployerKey
+        ) = config.activeNetworkConfig();
+        address raffleAddress = DevOpsTools.get_most_recent_deployment(
+            "Raffle",
+            block.chainid
+        );
+        addConsumer(vrfCoordinatorAddress, subId, raffleAddress, deployerKey);
+    }
+
+    function addConsumer(
+        address vrfCoordinatorAddress,
+        uint64 subId,
+        address raffleAddress,
+        uint256 deployerKey
+    ) public {
+        vm.startBroadcast(deployerKey);
+        VRFCoordinatorV2Mock(vrfCoordinatorAddress).addConsumer(
+            subId,
+            raffleAddress
+        );
+        vm.stopBroadcast();
+    }
+
+    function run() external {
+        addConsumerByConfig();
     }
 }
