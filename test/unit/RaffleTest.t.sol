@@ -11,13 +11,7 @@ import {Config} from "../../script/Config.s.sol";
 contract RaffleTest is Test {
     Raffle raffle;
     Config config;
-    uint256 entraceFee;
-    address vrfCoordinatorAddress;
-    uint64 subscriptionId;
-    uint32 callbackGasLimit;
-    bytes32 gasLane;
     uint256 lengthOfRaffle;
-    address linkAddress;
 
     address USER = makeAddr("player");
     uint256 public constant STARTING_USER_BALANCE = 10 ether;
@@ -30,15 +24,7 @@ contract RaffleTest is Test {
         DeployRaffle deployRaffle = new DeployRaffle();
         (raffle, config) = deployRaffle.run();
 
-        (
-            entraceFee,
-            vrfCoordinatorAddress,
-            subscriptionId,
-            callbackGasLimit,
-            gasLane,
-            lengthOfRaffle,
-            linkAddress
-        ) = config.activeNetworkConfig();
+        (, , , , , lengthOfRaffle, , ) = config.activeNetworkConfig();
 
         vm.deal(USER, STARTING_USER_BALANCE);
     }
