@@ -7,11 +7,14 @@ import {Raffle} from "../../src/Raffle.sol";
 import {DeployRaffle} from "../../script/DeployRaffle.s.sol";
 import {console} from "forge-std/console.sol";
 import {Config} from "../../script/Config.s.sol";
+import {Vm} from "forge-std/Vm.sol";
+import {VRFCoordinatorV2Mock} from "@chainlink/contracts/src/v0.8/mocks/VRFCoordinatorV2Mock.sol";
 
 contract RaffleTest is Test {
     Raffle raffle;
     Config config;
     uint256 lengthOfRaffle;
+    address vrfCoordinatorAddress;
 
     address USER = makeAddr("player");
     uint256 public constant STARTING_USER_BALANCE = 10 ether;
@@ -24,7 +27,8 @@ contract RaffleTest is Test {
         DeployRaffle deployRaffle = new DeployRaffle();
         (raffle, config) = deployRaffle.run();
 
-        (, , , , , lengthOfRaffle, , ) = config.activeNetworkConfig();
+        (, vrfCoordinatorAddress, , , , lengthOfRaffle, , ) = config
+            .activeNetworkConfig();
 
         vm.deal(USER, STARTING_USER_BALANCE);
     }
@@ -47,24 +51,50 @@ contract RaffleTest is Test {
     }
 
     function testCantEnterWhenNotOpen() public prankUser(USER) {
-        makeRaffleClose();
+        performValidUpdateOneWIthOneUser();
         vm.expectRevert(Raffle.Raffle__RaffleIsNotOpen.selector);
         raffle.enter{value: 10000000000000000}();
     }
 
     function testCheckUpkeep_notNeededIfNotOpen() public prankUser(USER) {
-        makeRaffleClose();
+        performValidUpdateOneWIthOneUser();
 
         (bool upkeepNeeded, ) = raffle.checkUpkeep("");
         assert(upkeepNeeded == false);
     }
 
-    function makeRaffleClose() internal {
+    function testWinnerIsPicked() public prankUser(USER) {
+        bytes32 requestId = performValidUpdateOneWIthOneUser();
+
+        vm.warp(block.timestamp + lengthOfRaffle + 1);
+        vm.roll(block.number + 3);
+
+        uint256 initialUserBalance = USER.balance;
+
+        VRFCoordinatorV2Mock(vrfCoordinatorAddress).fulfillRandomWords(
+            uint256(requestId),
+            address(raffle)
+        );
+        uint256 postWinUserBalance = USER.balance;
+        assert(postWinUserBalance > initialUserBalance);
+    }
+
+    function performValidUpdateOneWIthOneUser()
+        internal
+        returns (bytes32 requestId)
+    {
         raffle.enter{value: 10000000000000000}();
         vm.warp(block.timestamp + lengthOfRaffle + 1);
         vm.roll(block.number + 1);
+
+        vm.recordLogs();
         raffle.performUpkeep("");
+
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        requestId = entries[0].topics[2];
+
         assert(raffle.getState() == uint256(Raffle.RaffleState.CLOSED));
+        return requestId;
     }
 
     modifier prankUser(address user) {
