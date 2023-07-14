@@ -29,34 +29,47 @@ contract RaffleTest is Test {
         vm.deal(USER, STARTING_USER_BALANCE);
     }
 
-    function testCanEnter() public {
+    function testCanEnter() public prankUser(USER) {
         assert(address(raffle).balance == 0);
-        vm.startPrank(USER);
         vm.expectEmit(true, false, false, false, address(raffle));
         emit Entered(USER, 0);
         raffle.enter{value: 10000000000000000}();
-        vm.stopPrank();
         assert(raffle.getNumberOfParticipants() == 1);
         assert(raffle.getParticipant(0) == USER);
         assert(address(raffle).balance > 0);
     }
 
-    function testCantEnterWithoutEnoughEth() public {
+    function testCantEnterWithoutEnoughEth() public prankUser(USER) {
         assert(address(raffle).balance == 0);
-        vm.startPrank(USER);
         vm.expectRevert(Raffle.Raffle__NotEnoughEthToEnter.selector);
         raffle.enter{value: 100}();
         assert(address(raffle).balance == 0);
     }
 
-    function testCantEnterWhenNotOpen() public {
-        vm.startPrank(USER);
+    function testCantEnterWhenNotOpen() public prankUser(USER) {
+        makeRaffleClose();
+        vm.expectRevert(Raffle.Raffle__RaffleIsNotOpen.selector);
+        raffle.enter{value: 10000000000000000}();
+    }
+
+    function testCheckUpkeep_notNeededIfNotOpen() public prankUser(USER) {
+        makeRaffleClose();
+
+        (bool upkeepNeeded, ) = raffle.checkUpkeep("");
+        assert(upkeepNeeded == false);
+    }
+
+    function makeRaffleClose() internal {
         raffle.enter{value: 10000000000000000}();
         vm.warp(block.timestamp + lengthOfRaffle + 1);
         vm.roll(block.number + 1);
         raffle.performUpkeep("");
-        vm.expectRevert(Raffle.Raffle__RaffleIsNotOpen.selector);
-        raffle.enter{value: 10000000000000000}();
+        assert(raffle.getState() == uint256(Raffle.RaffleState.CLOSED));
+    }
+
+    modifier prankUser(address user) {
+        vm.startPrank(user);
+        _;
         vm.stopPrank();
     }
 }
