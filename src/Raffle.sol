@@ -37,8 +37,9 @@ contract Raffle is VRFConsumerBaseV2 {
     RaffleState private s_raffleState = RaffleState.OPEN;
 
     event Entered(address indexed participant, uint256 raffleNumber);
+    event PickingWinnerInited(uint256 indexed requestId, uint256 raffleNumber);
     event Winner(address indexed winner, uint256 raffleNumber);
-    event IdleRaffleReset(uint256 raffleNumber);
+    event IdleRaffleReset(uint256 indexed raffleNumber);
 
     constructor(
         uint256 entranceFee,
@@ -106,6 +107,8 @@ contract Raffle is VRFConsumerBaseV2 {
             i_callbackGasLimit,
             NUM_RANDOM_WORDS
         );
+        console.log("requestId: %s", requestId);
+        emit PickingWinnerInited(requestId, s_currentRaffleNumber);
     } // only owner? only chainlink?
 
     function fulfillRandomWords(

@@ -14,6 +14,7 @@ contract RaffleTest is Test {
     Raffle raffle;
     Config config;
     uint256 lengthOfRaffle;
+    uint256 subId;
     address vrfCoordinatorAddress;
 
     address USER = makeAddr("player");
@@ -27,7 +28,7 @@ contract RaffleTest is Test {
         DeployRaffle deployRaffle = new DeployRaffle();
         (raffle, config) = deployRaffle.run();
 
-        (, vrfCoordinatorAddress, , , , lengthOfRaffle, , ) = config
+        (, vrfCoordinatorAddress, subId, , , lengthOfRaffle, , ) = config
             .activeNetworkConfig();
 
         vm.deal(USER, STARTING_USER_BALANCE);
@@ -126,7 +127,9 @@ contract RaffleTest is Test {
         raffle.performUpkeep("");
 
         Vm.Log[] memory entries = vm.getRecordedLogs();
-        requestId = entries[0].topics[2];
+
+        requestId = entries[1].topics[1];
+        console.log("requestId: %s", uint256(requestId));
 
         assert(raffle.getState() == uint256(Raffle.RaffleState.CLOSED));
         return requestId;
