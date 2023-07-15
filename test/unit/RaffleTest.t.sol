@@ -50,35 +50,46 @@ contract RaffleTest is Test {
         assert(address(raffle).balance == 0);
     }
 
-    function testCantEnterWhenNotOpen() public prankUser(USER) {
-        performValidUpdateOneWIthOneUser();
+    function testCantEnterWhenNotOpen() public {
+        enterUser(USER);
+        performValidUpdate();
         vm.expectRevert(Raffle.Raffle__RaffleIsNotOpen.selector);
         raffle.enter{value: 10000000000000000}();
     }
 
-    function testCheckUpkeep_notNeededIfNotOpen() public prankUser(USER) {
-        performValidUpdateOneWIthOneUser();
+    function testCheckUpkeep_notNeededIfNotOpen() public {
+        enterUser(USER);
+        performValidUpdate();
 
         (bool upkeepNeeded, ) = raffle.checkUpkeep("");
         assert(upkeepNeeded == false);
     }
 
-    function testWinnerIsPicked() public prankUser(USER) {
-        bytes32 requestId = performValidUpdateOneWIthOneUser();
+    function testWinnerIsPicked() public {
+        for (uint256 i = 1; i < 10; i++) {
+            address player = address(uint160(i));
+            hoax(player, 1 ether);
+            raffle.enter{value: 10000000000000000}();
+        }
+        bytes32 requestId = performValidUpdate();
 
         vm.warp(block.timestamp + lengthOfRaffle + 1);
         vm.roll(block.number + 3);
 
-        uint256 initialUserBalance = USER.balance;
         assert(address(raffle).balance != 0);
         uint256 originalStartOfRaffle = raffle.getStartOfRaffle();
 
+        vm.recordLogs();
         VRFCoordinatorV2Mock(vrfCoordinatorAddress).fulfillRandomWords(
             uint256(requestId),
             address(raffle)
         );
-        uint256 postWinUserBalance = USER.balance;
-        assert(postWinUserBalance > initialUserBalance);
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+
+        address winner = address(uint160(uint256(entries[0].topics[1])));
+
+        uint256 postWinUserBalance = winner.balance;
+        assert(postWinUserBalance > 1 ether);
         assert(address(raffle).balance == 0);
 
         uint256 newStartOfRaffle = raffle.getStartOfRaffle();
@@ -101,11 +112,13 @@ contract RaffleTest is Test {
         assert(newStartOfRaffle > originalStartOfRaffle);
     }
 
-    function performValidUpdateOneWIthOneUser()
-        internal
-        returns (bytes32 requestId)
-    {
+    function enterUser(address user) internal {
+        vm.startPrank(user);
         raffle.enter{value: 10000000000000000}();
+        vm.stopPrank();
+    }
+
+    function performValidUpdate() internal returns (bytes32 requestId) {
         vm.warp(block.timestamp + lengthOfRaffle + 1);
         vm.roll(block.number + 1);
 
