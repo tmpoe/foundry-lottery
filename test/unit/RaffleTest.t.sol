@@ -79,6 +79,22 @@ contract RaffleTest is Test {
         assert(postWinUserBalance > initialUserBalance);
     }
 
+    function testRestartRaffleOnIdle() public {
+        vm.warp(block.timestamp + lengthOfRaffle + 1);
+        vm.roll(block.number + 1);
+
+        uint256 originalStartOfRaffle = raffle.getStartOfRaffle();
+
+        (bool upkeepNeeded, ) = raffle.checkUpkeep("");
+        assert(upkeepNeeded == true);
+
+        vm.expectEmit(false, false, false, true, address(raffle));
+        emit IdleRaffleReset(0);
+        raffle.performUpkeep("");
+        uint256 newStartOfRaffle = raffle.getStartOfRaffle();
+        assert(newStartOfRaffle > originalStartOfRaffle);
+    }
+
     function performValidUpdateOneWIthOneUser()
         internal
         returns (bytes32 requestId)
