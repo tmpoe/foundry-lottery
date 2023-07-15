@@ -70,6 +70,8 @@ contract RaffleTest is Test {
         vm.roll(block.number + 3);
 
         uint256 initialUserBalance = USER.balance;
+        assert(address(raffle).balance != 0);
+        uint256 originalStartOfRaffle = raffle.getStartOfRaffle();
 
         VRFCoordinatorV2Mock(vrfCoordinatorAddress).fulfillRandomWords(
             uint256(requestId),
@@ -77,6 +79,10 @@ contract RaffleTest is Test {
         );
         uint256 postWinUserBalance = USER.balance;
         assert(postWinUserBalance > initialUserBalance);
+        assert(address(raffle).balance == 0);
+
+        uint256 newStartOfRaffle = raffle.getStartOfRaffle();
+        assert(newStartOfRaffle > originalStartOfRaffle);
     }
 
     function testRestartRaffleOnIdle() public {
