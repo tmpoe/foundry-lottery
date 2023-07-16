@@ -66,7 +66,7 @@ contract RaffleTest is Test {
         assert(upkeepNeeded == false);
     }
 
-    function testWinnerIsPicked() public {
+    function testWinnerIsPicked() public skipOnFork {
         for (uint256 i = 1; i < 10; i++) {
             address player = address(uint160(i));
             hoax(player, 1 ether);
@@ -139,5 +139,12 @@ contract RaffleTest is Test {
         vm.startPrank(user);
         _;
         vm.stopPrank();
+    }
+
+    modifier skipOnFork() {
+        if (block.chainid != 31337) {
+            return;
+        }
+        _;
     }
 }
