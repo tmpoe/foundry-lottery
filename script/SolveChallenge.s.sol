@@ -8,7 +8,7 @@ import {DevOpsTools} from "foundry-devops/src/DevOpsTools.sol";
 import {console} from "forge-std/console.sol";
 
 contract SolveChallengeNine {
-    error NotSolved();
+    error NotSolved(uint256 guess, uint256 solution);
     address constant lessonNineCtr = 0x33e1fD270599188BB1489a169dF1f0be08b83509;
 
     function solve() public {
@@ -18,17 +18,17 @@ contract SolveChallengeNine {
             )
         ) % 100000;
 
-        console.log("Solving challenge with ", sol);
         (bool success, bytes memory data) = lessonNineCtr.delegatecall(
             abi.encodeWithSignature(
-                "solveChallenge(uint256, string)",
+                "solveChallenge(uint256,string)",
                 sol,
                 "@its_a_me_TMP"
             )
         );
-        if (success == false) {
-            console.log(string(data));
-            //revert NotSolved();
+        require(success);
+        uint256 solution = abi.decode(data, (uint256));
+        if (sol != solution) {
+            revert NotSolved({guess: sol, solution: solution});
         }
     }
 }
@@ -42,9 +42,7 @@ contract DeployAndRunSolveChallenge is Script {
 
         vm.startBroadcast(deployerKey);
 
-        solveChallenge = SolveChallengeNine(
-            0xbAE000107421C0be6152ef50ba6974e4D39f3712
-        );
+        solveChallenge = new SolveChallengeNine();
         console.log("Solving challenge: ", address(solveChallenge));
         solveChallenge.solve();
 
@@ -66,4 +64,19 @@ contract LessonNineMock {
     function attribute() external pure returns (string memory) {}
 
     function specialImage() external pure returns (string memory) {}
+}
+
+contract Simulation {
+    function getNumber() public view returns (uint256) {
+        return
+            uint256(
+                keccak256(
+                    abi.encodePacked(
+                        msg.sender,
+                        block.prevrandao,
+                        block.timestamp
+                    )
+                )
+            ) % 100000;
+    }
 }
