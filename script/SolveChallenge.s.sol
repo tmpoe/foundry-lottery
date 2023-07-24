@@ -18,6 +18,7 @@ contract SolveChallengeNine {
             )
         ) % 100000;
 
+        console.log("Solving with ", msg.sender);
         (bool success, bytes memory data) = lessonNineCtr.delegatecall(
             abi.encodeWithSignature(
                 "solveChallenge(uint256,string)",
